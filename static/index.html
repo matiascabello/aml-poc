@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asistente de Triage de Alertas AML</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            paper:     '#f8fafc', // page background
+            paperDark: '#f1f5f9', // muted surface (hover rows)
+            ink:       '#0f172a', // primary text + "executed" / final-state accent
+            inkSoft:   '#475569', // secondary text
+            rust:      '#b91c1c', // error / rejected / escalate
+            gold:      '#b45309', // pending / warning
+            teal:      '#0f766e', // approved / success / dismiss
+            slateBlue: '#1d4ed8', // analyzed / info
+            line:      '#e2e8f0', // borders, dividers
+          },
+          fontFamily: {
+            sans: ['"IBM Plex Sans"', 'sans-serif'],
+            mono: ['"IBM Plex Mono"', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body class="min-h-screen bg-paper text-ink antialiased">
+  <header class="flex items-center bg-white border-b border-line px-6 py-4">
+    <div class="flex items-baseline gap-3">
+      <span class="text-lg font-semibold">Triage de Alertas AML</span>
+      <span class="text-sm text-inkSoft">Revisión asistida por IA con aprobación humana</span>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-6 flex flex-col gap-6">
+    <div class="grid grid-cols-12 gap-6">
+      <section class="col-span-12 lg:col-span-4 bg-white border border-line rounded-xl overflow-hidden">
+        <h2 class="text-sm uppercase tracking-wide text-inkSoft px-4 pt-4 pb-2">
+          Bandeja de entrada
+        </h2>
+        <ul id="inbox-list" class="divide-y divide-line"></ul>
+      </section>
+
+      <section id="detail-panel" class="col-span-12 lg:col-span-8 bg-white border border-line rounded-xl p-6"></section>
+    </div>
+    <section>
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-sm uppercase tracking-wide text-inkSoft">Log</h2>
+        <button id="log-clear-btn" type="button" class="font-mono text-[11px] uppercase tracking-wide text-inkSoft hover:text-ink transition-colors px-2 py-1">Clear</button>
+      </div>
+      <div id="log-panel" class="log-terminal"></div>
+    </section>
+  </main>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

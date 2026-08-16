@@ -1,0 +1,20 @@
+[project]
+name = "bankingly-aml"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.141.1",
+    "openai==3.1.0",
+    "pydantic==2.13.4",
+    "python-dotenv>=1.2.2",
+    "uvicorn>=0.52.3",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

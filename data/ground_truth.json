@@ -1,0 +1,44 @@
+[
+  {
+    "alert_id": "ALERT-001",
+    "expected_recommendation": "escalate",
+    "difficulty": "clear_suspicious",
+    "rationale": "Three cash deposits on consecutive days, each just under the $10,000 reporting threshold, totaling ~$29,400 against a declared income of $1,200/month, with no plausible declared source. Textbook structuring."
+  },
+  {
+    "alert_id": "ALERT-002",
+    "expected_recommendation": "dismiss",
+    "difficulty": "clear_innocent",
+    "rationale": "Customer runs a cash-intensive restaurant business; deposit amounts and cadence (weekend takings) are consistent with declared revenue and prior account history. No mismatch between profile and activity."
+  },
+  {
+    "alert_id": "ALERT-003",
+    "expected_recommendation": "escalate",
+    "difficulty": "ambiguous",
+    "rationale": "The stated purpose (property sale) is plausible for the customer's profile, but there is no supporting documentation on file and the counterparty is a generic-sounding entity in a high-risk jurisdiction. Should be escalated pending documentation rather than dismissed outright."
+  },
+  {
+    "alert_id": "ALERT-004",
+    "expected_recommendation": "escalate",
+    "difficulty": "ambiguous",
+    "rationale": "Could be a genuine family loan repayment, but the customer is a PEP in a municipal procurement role with a high risk rating, and the amount is roughly 15x declared monthly income. 'Family loan' is a common layering justification, so this warrants escalation pending documentation, not a clean dismissal."
+  },
+  {
+    "alert_id": "ALERT-005",
+    "expected_recommendation": "escalate",
+    "difficulty": "clear_suspicious",
+    "rationale": "No declared income, previously dormant account, funds received and moved out same day to unrelated counterparties in different countries with vague memos ('consulting services' / 'invoice payment'). Classic pass-through/mule pattern."
+  },
+  {
+    "alert_id": "ALERT-006",
+    "expected_recommendation": "dismiss",
+    "difficulty": "clear_innocent",
+    "rationale": "Steady, small recurring pension deposits match declared retiree profile. The one large inflow is a documented, explainable one-time event (property sale via notary, deed referenced in the memo), not a behavioral pattern."
+  },
+  {
+    "alert_id": "ALERT-007",
+    "expected_recommendation": "dismiss",
+    "difficulty": "ambiguous",
+    "rationale": "On the surface this looks like exactly the pattern that correctly triggers escalation elsewhere in this set: a single huge wire (~132x declared monthly income) from a counterparty in a high-risk-listed jurisdiction, with no prior relationship and no occupational connection to the sender. A model that escalates on red-flag density alone will get this wrong. What resolves it is the specific documentation: a named, licensed insurer, an explicit policy number and claim number, and a stated regulator -- the same evidentiary bar that correctly clears ALERT-006 (deed on file) and correctly fails to clear ALERT-003 (generic entity name, no reference numbers). A life insurance death-benefit payout to a named beneficiary, verifiable against the cited policy/claim numbers, is not the kind of transaction typically used to launder funds, unlike an unverified 'sale of property' or 'family loan' claim. This is deliberately the first ambiguous case in the set whose correct resolution is NOT escalate, to test whether the model discriminates on evidence or just on surface risk cues."
+  }
+]
