@@ -18,6 +18,8 @@ Prueba de concepto de un agente interno para el triage de alertas AML en una ins
 ### Instalación
 
 ```bash
+# Clonar el repositorio
+# Ejecutar:
 uv sync
 ```
 
