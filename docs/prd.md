@@ -1,17 +1,22 @@
 # PRD — Triage de Alertas AML (Agente Interno)
 
-**De PoC a producto.** Este documento parte del PoC ya construido (ver `README.md` para arquitectura y `CLAUDE.md` para el brief original) y lo cierra como definición de producto.
+**De PoC a producto.** Este documento parte del PoC ya construido (ver `README.md`) y lo cierra como definición de producto.
 
 ---
 
 ## 1. Elección
 
-**Caso elegido:** un agente interno que asiste al analista de cumplimiento de una institución financiera LATAM en el triage de alertas AML (Anti-Money Laundering), redactando el informe de un **ROS** (Reporte de Operación Sospechosa) y proponiendo reportar el caso o descartarlo.
+**Caso elegido:** un agente interno que asiste al analista de cumplimiento de una institución financiera de LATAM en el triage de alertas AML (Anti-Money Laundering), redactando el informe de un **ROS** (Reporte de Operación Sospechosa) y proponiendo reportar el caso o descartarlo.
 
 **Por qué este caso:**
-- **El LLM resuelve algo que un template no puede.** Los reguladores LATAM (UIF / marco GAFILAT, alineado a GAFI/FATF) exigen que el ROS incluya un informe razonado y específico — citando montos, fechas y cómo la actividad se aparta del perfil declarado — no una alerta genérica. Redactar eso sobre evidencia heterogénea (transacciones vs. perfil KYC vs. jurisdicción) es exactamente lo que un LLM hace bien y un template no.
+
+- **El LLM resuelve algo que un template no puede.** El estándar GAFI/GAFILAT obliga a reportar a la UIF toda operación sospechosa —incluida la tentativa e independientemente del monto—, dejando en manos de cada UIF nacional la definición del contenido del reporte.[^1] Ese contenido no es una alerta genérica: la descripción de la sospecha es la pieza fundamental que abre el análisis de la UIF, porque expone la secuencia de hechos, el modus operandi y los montos, e incluye datos concretos como fecha, moneda, jurisdicciones e instrumentos; el reporte debe además cumplir con *suficiencia argumentativa*, es decir, permitir identificar con precisión por qué la operación es sospechosa.[^2] Entre las señales que deben sustentarse figuran, precisamente, las operaciones que no corresponden con el perfil y la capacidad económica declarada del cliente, o las transferencias a jurisdicciones de alto riesgo inconsistentes con su actividad.[^2] Redactar eso sobre evidencia heterogénea (transacciones vs. perfil KYC vs. jurisdicción) —un juicio que la propia normativa atribuye a la experiencia e idoneidad del oficial de cumplimiento[^2]— es exactamente lo que un LLM hace bien y un template no. La propia UIF documenta como deficiencia recurrente la "mecanización" de reportes: mismo texto reutilizado cambiando solo nombre, montos y fechas.[^2]
 - **El costo de no automatizarlo es real y medible.** Cada alerta hoy consume tiempo de redacción manual de un analista calificado; el volumen de alertas escala con el negocio, el headcount de compliance no escala igual de rápido.
 - **El riesgo del dominio calza con la restricción central del ejercicio.** En AML, un falso negativo (una alerta genuinamente sospechosa que se cierra sin revisión humana) es una falla regulatoria, no solo un bug. Que el código —no el prompt ni la UI— sea quien garantice que ninguna acción se ejecuta sin aprobación explícita no es una restricción arbitraria del ejercicio: es exactamente la propiedad que este dominio necesita.
+
+[^1]: GAFI, Recomendación 20 (Reporte de operaciones sospechosas) y su Nota Interpretativa, *Estándares Internacionales sobre la Lucha contra el Lavado de Activos, el Financiamiento del Terrorismo y de la Proliferación* (2012, act. 2023). Adoptadas regionalmente por GAFILAT. https://www.fatf-gafi.org/content/dam/fatf-gafi/translations/Recommendations/FATF-40-Rec-2012-Spanish.pdf.coredownload.inline.pdf
+
+[^2]: Unidad de Información Financiera (Argentina), *Análisis y evaluación de los reportes de operaciones sospechosas de los sujetos obligados* (Formación UIF 2022). Contenido y principios del ROS (descripción como pieza fundamental del análisis, suficiencia argumentativa, elementos mínimos —monto, moneda, fecha, jurisdicciones, señales de alerta—, rol del juicio del oficial de cumplimiento, y deficiencia por "mecanización" de reportes). https://www.argentina.gob.ar/sites/default/files/analisis-evaluacion-ros_0.pdf
 
 ---
 
@@ -28,12 +33,14 @@
 ## 3. Alcance de esta versión
 
 Ya construido (PoC funcional, end-to-end):
+
 - Máquina de estados con gate de aprobación no evitable por código (`pending → analyzed → approved → executed`, `rejected` terminal).
 - LLM intercambiable (`LLM_MODE=fake|real`) — informe + recomendación en español, formato LATAM (fecha día-primero, punto de miles).
 - UI de bandeja + detalle + decisión binaria (Aprobar/Rechazar).
 - Evals: corrección de recomendación contra ground truth (con gates, no un % agregado) + calidad de informe (rúbrica de presencia de evidencia).
 
 Explícitamente fuera de alcance (documentado también en el README):
+
 - Envío real del ROS a la UIF.
 - Integración con core bancario o con el sistema de monitoreo transaccional real (los datos son simulados).
 - Autenticación/roles.
@@ -79,6 +86,7 @@ Explícitamente fuera de alcance (documentado también en el README):
 ## 6. Cierre de producto
 
 ### Visión a 12 meses
+
 El agente deja de ser un asistente de redacción y se convierte en la primera línea de triage de AML para instituciones financieras LATAM: cada alerta que entra al sistema de monitoreo llega al analista ya con narrativa y recomendación redactadas, dejando al humano el 100% del poder de decisión pero liberándolo de la redacción. El éxito se mide en tiempo de triage por alerta y en tasa de acuerdo entre la recomendación del agente y la decisión final del analista — no en reemplazar al analista, sino en que deje de ser cuello de botella cuando el volumen de alertas crece.
 
 ### Roadmap en 3 etapas
@@ -90,6 +98,7 @@ El agente deja de ser un asistente de redacción y se convierte en la primera l�
 | **3 — Escalar** | 6–12 meses | Integración con el flujo real de generación/envío del ROS (aprobación humana sigue siendo obligatoria), expansión a más instituciones, LLM-judge para razonamiento. |
 
 ### Esqueleto de business case
+
 - **Costo:** horas de analista hoy dedicadas a redactar narrativas manualmente (a levantar con el cliente) vs. costo de inferencia del LLM — bajo, dado que el modelo usado (`gpt-5.6-luna`) es el tier económico de OpenAI. A esto se suma el costo de engineering de las etapas P1 (persistencia, auth).
 - **Valor:** reducción del tiempo de triage por alerta, mayor consistencia y calidad de la narrativa (menor riesgo de que la UIF rechace un ROS por narrativa genérica), capacidad de absorber crecimiento en volumen de alertas sin escalar headcount 1:1.
 - **Riesgo evitado:** menor exposición a sanción regulatoria por narrativas deficientes o por alertas mal cerradas y sin trazabilidad — hoy el sistema deja un audit log de cada decisión, humana y del agente.
@@ -107,10 +116,12 @@ El agente deja de ser un asistente de redacción y se convierte en la primera l�
 ### Go/No-Go, con criterios de reversión
 
 **Go (para pasar de Etapa 1 a Etapa 2, piloto asistido):**
+
 - `zero_fn_gate` en 0 (recall = 100% sobre la clase "escalar") sobre un set de evaluación ampliado y representativo (no las 7 alertas de ejemplo — un set etiquetado por compliance, con volumen estadísticamente significativo), medido con múltiples muestras por alerta y no una corrida única, dado el no-determinismo ya confirmado de `LLM_MODE=real`.
 - Tasa de acuerdo agente-humano ≥ umbral a definir con el equipo de cumplimiento sobre el piloto en modo shadow.
 - Revisión legal/DPA del envío de datos a OpenAI completada y aprobada.
 
 **No-Go / reversión:**
+
 - Si el modo shadow (Etapa 1) muestra **cualquier** falso negativo confirmado sobre el set ampliado, el piloto no avanza a Etapa 2 hasta ajustar prompt/modelo y re-validar.
 - Reversión operativa disponible en cualquier momento: el equipo de cumplimiento puede suspender el agente por completo y volver a un proceso 100% manual (el analista redacta la narrativa desde cero, como antes del agente) sin perder funcionalidad del resto del sistema — la máquina de estados y el gate de aprobación no dependen del LLM para funcionar. `LLM_MODE=fake` no es una alternativa de reversión: es un modo de testing/demo con narrativas canned que no corresponden a la alerta real, y no tiene ningún lugar en producción.

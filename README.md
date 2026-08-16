@@ -1,9 +1,9 @@
 # AML Alert Triage — Agente interno (PoC)
 
-Prueba de concepto de un agente interno para el triage de alertas AML en una institución financiera de LATAM. Un LLM redacta la narrativa investigativa requerida para un **Reporte de Operación Sospechosa (ROS)** y propone una acción binaria (escalar o descartar). La decisión final es siempre humana: **ninguna acción con efectos se ejecuta sin la aprobación explícita de un analista, y ese control está garantizado por código, no por el prompt ni por la UI.**
+Prueba de concepto de un agente interno para el triage de alertas AML en una institución financiera de LATAM. Un LLM redacta el informe requerido para un **Reporte de Operación Sospechosa (ROS)** y propone una acción binaria (escalar o descartar). La decisión final es siempre humana: **ninguna acción con efectos se ejecuta sin la aprobación explícita de un analista, y ese control está garantizado por código, no por el prompt ni por la UI.**
 
 - **Usuario:** analista de cumplimiento de una institución financiera.
-- **Alcance de esta versión:** datos simulados, sin integraciones reales, corre localmente. El LLM solo genera texto (narrativa + recomendación); la ejecución la habilita el operador.
+- **Alcance de esta versión:** datos simulados, sin integraciones reales, corre localmente. El LLM solo genera texto (informe + recomendación); la ejecución la habilita el operador.
 - **Fuera de alcance:** envío real del ROS a la UIF, integración con core bancario, autenticación/roles, persistencia en base de datos.
 
 ---
@@ -65,7 +65,7 @@ El principio de diseño central: **el modelo decide qué recomendar; el código 
 ### Qué decide el modelo
 
 - Lee los datos crudos de la alerta.
-- Redacta la narrativa investigativa del ROS — el texto formal que ningún template puede replicar y que es el valor real del LLM en este caso.
+- Redacta el informe del ROS — el texto formal que ningún template puede replicar y que es el valor real del LLM en este caso.
 - Propone una recomendación binaria: **escalar** (presentar el ROS) o **descartar** (cerrar la alerta), con su justificación.
 
 El modelo **no** ejecuta acciones, **no** cambia el estado de una alerta y **no** tiene acceso a la función `execute()`. Su salida es exclusivamente texto.
@@ -80,8 +80,8 @@ pending ──analyze──> analyzed ──approve──> approved ──execut
                          └──reject──> rejected (terminal)
 ```
 
-- `pending`: alerta sin analizar. No hay narrativa todavía.
-- `analyzed`: el LLM ya redactó narrativa + recomendación. Lista para la decisión del operador.
+- `pending`: alerta sin analizar. El agente todavía no revisó la alerta ni redactó el informe.
+- `analyzed`: el LLM ya redactó el informe y la recomendación. Lista para la decisión del operador.
 - `approved`: el analista aprobó la recomendación. Habilita la ejecución.
 - `executed`: la acción se materializó (en esta PoC, la generación del ROS).
 - `rejected`: el analista rechazó la recomendación. Estado terminal, sin salida.
@@ -122,8 +122,8 @@ Que el `409` provenga de un `curl` —y no de la UI— es la demostración de qu
 | Método | Ruta | Efecto | Estado requerido |
 |---|---|---|---|
 | `GET` | `/api/alerts` | Lista para la bandeja (id, resumen, status). | — |
-| `GET` | `/api/alerts/{id}` | Detalle: datos crudos, narrativa, recomendación, status. | — |
-| `POST` | `/api/alerts/{id}/analyze` | Corre el LLM, guarda narrativa + recomendación. | `pending` |
+| `GET` | `/api/alerts/{id}` | Detalle: datos crudos, informe, recomendación, status. | — |
+| `POST` | `/api/alerts/{id}/analyze` | Corre el LLM, guarda el informe + recomendación. | `pending` |
 | `POST` | `/api/alerts/{id}/approve` | Aprueba la recomendación. | `analyzed` |
 | `POST` | `/api/alerts/{id}/reject` | Rechaza (terminal). | `analyzed` |
 | `POST` | `/api/alerts/{id}/execute` | Materializa la acción aprobada. | `approved` |
@@ -139,11 +139,11 @@ Toda validación de transición vive en la máquina de estados. Los endpoints so
 UI de dos paneles (bandeja + detalle) más una terminal de log, en HTML + CSS + JavaScript vanilla, sin build step. Tailwind y DaisyUI se cargan por CDN.
 
 - **Bandeja (izquierda):** lista de alertas con badge de estado por color.
-- **Detalle (derecha):** cuatro bloques — datos crudos, narrativa del ROS, recomendación + justificación, y controles de decisión.
+- **Detalle (derecha):** cuatro bloques — datos crudos, informe del ROS, recomendación + justificación, y controles de decisión.
 - **Decisión del operador:** binaria, **Aprobar** o **Rechazar**. Aprobar dispara la ejecución; rechazar cierra la alerta. `execute` sigue siendo un endpoint propio (con su `ensure_approved()`), pero la UI no lo expone como botón separado.
 - **Terminal de log:** registra cada transición **según la respuesta del backend**, no según lo que la UI asume. Un `pending → analyzed` exitoso y un `409 Conflict` sobre una transición inválida se ven ambos en el log — lo que la vuelve evidencia de que el estado vive en el backend.
 
-Al abrir una alerta `pending`, la UI llama a `analyze` de forma condicional (solo si el status real es `pending`), loguea la transición y luego renderiza el detalle ya con la narrativa presente. El analista aterriza directo en la decisión, pero la transición `pending → analyzed` queda visible en el log.
+Al abrir una alerta `pending`, la UI llama a `analyze` de forma condicional (solo si el status real es `pending`), loguea la transición y luego renderiza el detalle ya con el informe presente. El analista aterriza directo en la decisión, pero la transición `pending → analyzed` queda visible en el log.
 
 ---
 
@@ -164,8 +164,8 @@ Se consideró marcar el estado como ejecutado desde el endpoint tras llamar a `e
 **Ground truth separado de lo que ve el LLM.**
 `data/ground_truth.json` no se expone nunca por la API. Garantiza que las evals midan contra una verdad que el modelo no pudo ver.
 
-**Rúbrica determinística para la narrativa, en vez de un LLM-judge.**
-`narrative_checklist()` en `src/eval.py` verifica *presencia* de hechos (monto, fecha, perfil del cliente, contraparte) con reglas deterministas, no razonamiento. Alternativa: un LLM-judge que evalúe si el razonamiento de la narrativa es sólido, no solo si cita los datos correctos. Tradeoff: la rúbrica determinística es reproducible y sin costo de inferencia extra, pero es un piso, no una prueba de que el razonamiento sea correcto. El LLM-judge queda para una siguiente iteración.
+**Rúbrica determinística para el informe, en vez de un LLM-judge.**
+`narrative_checklist()` en `src/eval.py` verifica *presencia* de hechos (monto, fecha, perfil del cliente, contraparte) con reglas deterministas, no razonamiento. Alternativa: un LLM-judge que evalúe si el razonamiento del informe es sólido, no solo si cita los datos correctos. Tradeoff: la rúbrica determinística es reproducible y sin costo de inferencia extra, pero es un piso, no una prueba de que el razonamiento sea correcto. El LLM-judge queda para una siguiente iteración.
 
 **Decisión binaria del operador (approve/reject), con `execute` disparado por `approve`.**
 Alternativa: exponer `execute` como un cuarto botón. Tradeoff: se prioriza el modelo mental del analista (la decisión real es binaria) sobre la visibilidad del paso de ejecución en la UI. El gate se sigue demostrando a nivel API, así que no se pierde nada de la demostración.
@@ -206,7 +206,7 @@ Alternativa: un SPA (React) con build. Tradeoff: el CDN de Tailwind está pensad
 │   └── ground_truth.json   # solo para evals, nunca expuesto
 ├── tests/
 │   └── test_*.py           # un archivo de tests por módulo de src/
-├── docs/                   # notas de proceso (no forman parte del producto)
+├── docs/                   # documentos adicionales
 ├── CLAUDE.md
 ├── README.md
 ├── pyproject.toml
@@ -220,7 +220,7 @@ Alternativa: un SPA (React) con build. Tradeoff: el CDN de Tailwind está pensad
 Se miden dos cosas, siempre comparando contra `data/ground_truth.json` (las respuestas correctas, que el modelo nunca ve):
 
 1. **¿Recomendó bien?** Para cada alerta, el modelo dice `escalate` (presentar el ROS) o `dismiss` (cerrar la alerta). Comparamos esa decisión contra la respuesta correcta.
-2. **¿La narrativa cita los hechos?** Un chequeo automático verifica que el texto mencione los cuatro datos clave: monto, fecha, perfil del cliente y contraparte.
+2. **¿El informe cita los hechos?** Un chequeo automático verifica que el texto mencione los cuatro datos clave: monto, fecha, perfil del cliente y contraparte.
 
 En vez de un porcentaje global de aciertos, usamos dos umbrales pass/fail, porque en AML no todos los errores pesan igual (ver más abajo):
 
@@ -306,3 +306,10 @@ No relacionadas con el ejercicio, pero evidencia de mi experiencia con los frame
 
 - [Agent Crew Studio](https://github.com/matiascabello/agent-crew-studio): un grupo de agentes que emulan a un equipo real de desarrollo (producto, tech lead, backend engineer, frontend engineer y testing). Le tirás una idea y te arma una PoC.
 - [Should we build it?](https://github.com/matiascabello/should-we-build-it): una herramienta que ayuda a determinar si una feature o un producto deberían ser implementados o no. Dos agentes debaten sobre el tema apoyándose en la documentación compartida por el usuario y en información que puedan encontrar en la web, un tercero hace un fact-check de los argumentos de los agentes anteriores y un cuarto agente define. Es básicamente un Go/No-Go de discovery armado con agentes.
+
+No relacionado con IA ni con la industria de Bankingly en particular, pero sí con una parte fundamental de un producto que debe analizar y clasificar un set de datos, como el desarrollado para esta PoC. Durante el desarrollo de [Scout Audit](https://github.com/CoinFabrik/scout-audit) —analizador estático de código que lideré en CoinFabrik— medir la precisión de la herramienta era fundamental para refinar la calidad de los detectores. A lo largo de todo el desarrollo llevamos a cabo sucesivos análisis de _precision and recall_ que nos daban información clave para ajustar su confiabilidad. Lo hacíamos de dos formas distintas:
+
+- A partir de un set de datos conocido: el _ground truth_ contra el cual comparábamos los resultados arrojados por Scout Audit.
+- A partir de los resultados obtenidos al correr la herramienta sobre código desconocido, que luego eran analizados por un auditor de seguridad: un trabajo mucho más exploratorio y artesanal, pero que nos permitió incorporar casos muy valiosos y mejorar considerablemente la precisión de la herramienta.
+
+Los dos enfoques son complementarios: el _ground truth_ da una medición reproducible; el loop con el auditor es lo que realmente sube la calidad. Es exactamente el segundo paso que, en esta PoC, señalo como pendiente en la sección de Evals.
